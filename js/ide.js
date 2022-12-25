@@ -151,7 +151,7 @@ function run_python(){
 			if(!isMobile)editor.focus();
 			
 			}
-		var socket = new WebSocket("wss://python-exec.iran.liara.run"),
+		var socket = new WebSocket("wss://python-exec.iran.liara.run");
 		//var socket = new WebSocket(get_host());
 		//var socket = new WebSocket("ws://127.0.0.1:5678");
 		socket.onmessage = function (event) {
