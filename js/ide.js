@@ -1,6 +1,7 @@
 function run_python(){
 	selected_text=editor.session.getTextRange(editor.getSelectionRange());
 	input_arguments=document.getElementById("input_arguments").value;
+	active_code='';
 	connect_error='';
 	var hint;
 	if(hint_glow!==undefined&&hint_glow!==null){
@@ -30,6 +31,7 @@ function run_python(){
 				code_content['file_name']=$(editor_list[i]).children('a')[0].innerText;
 				if($(editor_list[i]).hasClass('active')){
 					active_filename=code_content['file_name'];
+					active_code = editor_session[editor_index-1].getValue();
 					}
 				code_contents.push(code_content);
 			}
@@ -47,10 +49,10 @@ function run_python(){
 		progress_status.innerHTML='<div class="progress" id="progress-bar"><div class="progress-bar progress-bar-primary progress-bar-striped active" role="progressbar"></div></div>';
 		document.getElementById('control-btn').innerHTML='<button type="button" class="btn btn-danger btn-sm" id="stop-btn" onclick="stop_python()"><i class="fa fa-stop"></i>&ensp;<strong>Stop</strong></button>';
 		$('#stop-btn').removeAttr('disabled');$('.status button').attr('disabled','disabled');document.getElementById('wrap').innerHTML='';
-		/**/
+		/*
 		socket_options['query']={type:"script","lang":lang};
 		//socket=io(repl_host,socket_options);
-		socket=io(get_host_old(),socket_options);
+		socket=io(get_host(),socket_options);
 		socket.emit('code',code_contents,input_arguments.substring(0,500),active_filename);
 		socket.on('reconnecting',function(){console.log('Reconnecting to the server!');});
 		socket.on('connect',function(){console.log('Client has connected to the server');});
@@ -116,6 +118,70 @@ function run_python(){
 				});
 				$('#term-input').focus();
 			});
+		*/
+		function parseData(data, status){
+				console.log("Data: " + data + "\nStatus: " + status);
+				code = (status == "success")? 0:1;
+				
+				if(code!==0&&['c','cpp','java'].indexOf(lang)>=0)add_content(data,false);
+			else add_content(data,true);final_ts=Math.floor(performance.now()-init_ts)/1000;
+			if(code==0){
+				exe_cnt+=1;
+				progress_status.innerHTML='<div class="progress" id="progress-bar"><div class="progress-bar progress-bar-success active" role="progressbar"></div></div>';
+				}
+				else if(code==1000){
+					progress_status.innerHTML='<div class="progress" id="progress-bar"><div class="progress-bar progress-bar-warning active" role="progressbar"></div></div>';
+				}else{
+					progress_status.innerHTML='<div class="progress" id="progress-bar"><div class="progress-bar progress-bar-danger active" role="progressbar"></div></div>';
+					}
+
+			document.getElementById('control-btn').innerHTML='<button type="button" class="btn btn-success btn-sm" id="run-btn" onclick="run_python()"><i class="fa fa-play"></i>&ensp;<strong>Run</strong></button>';
+			$('#run-btn').removeAttr('disabled');
+			$('.status button').removeAttr('disabled');
+			if(exe_cnt===5){
+				$("#share-btn").popover('show');
+				exe_cnt+=1;
+				setTimeout(function(){$("#share-btn").popover('hide')},7000);
+			}
+			if(hint!==undefined){
+				document.getElementById("hint-section").innerHTML='<a tabindex="0" type="button" id="hint-btn" data-toggle="popover" data-placement="right" data-trigger="hover" data-content="'+hint+'" title="Hint" class="btn btn-default btn-sm status"><i class="fas fa-lightbulb"></i></button></a>';$("#hint-btn").popover('show');
+				setTimeout(function(){$("#hint-btn").popover('hide')},7000);
+				hint_glow=setInterval(function(){if($("#hint-btn").css('transform').search('1.5')!==-1){$("#hint-btn").css('transform','scale(1.2)')}else{$("#hint-btn").css('transform','scale(1.5)')}},700);
+				}
+			if(!isMobile)editor.focus();
+			
+			}
+		var socket = new WebSocket("wss://python-exec.iran.liara.run"),
+		//var socket = new WebSocket(get_host());
+		//var socket = new WebSocket("ws://127.0.0.1:5678");
+		socket.onmessage = function (event) {
+			parseData(event.data, "success");
+			console.log(event.data);
+		};
+		function sendDataWebSocket()
+		{
+			if(socket.readyState)
+			{
+				socket.send(JSON.stringify(
+				{
+					"code":`${active_code}`, 
+					"args":`${input_arguments}`
+				}));
+			}
+			else
+			{
+				setTimeout(sendDataWebSocket, 1000);
+			}
+		}
+		$(document).ready(function(){
+			var code=$('#term-input').val();
+			var args=$('#input_arguments').val();
+			//socket.send(`{"code":"${code}","args":"${args}"}`);
+			//socket.send(`{"code":"x=input('please input text:')\ny=input('please input text:')\nprint('say:'+x+y)", "args":"1\n2\n3"}`);
+			sendDataWebSocket();
+				
+				//$('#term-input').focus();
+		});
 			/*
 		$(document).ready(function(){
 			$.post("http://127.0.0.1:5000/submit", {code: code_contents[0]['code']}, 
@@ -261,7 +327,7 @@ function get_filenames(){editor_list=$(".nav-tabs").children('li');filenames=[]
 for(let i=0;i<editor_list.length-1;i++){filenames.push($(editor_list[i]).children('a')[0].innerText);}
 return filenames;}
 
-function get_host(){return "127.0.0.1";}
+function get_host(){return "ws://127.0.0.1:5678";}
 function get_host_old(){return "https://repl.online-cpp.com";}
 
 function get_mode(lang){mode={"c":"c_cpp","cpp":"c_cpp","cpp14":"c_cpp","cpp17":"c_cpp","python3":"python","perl":"perl","php":"php","java":"java","ruby":"ruby","golang":"golang","javascript":"javascript","rlang":"r","bash":"sh",}
